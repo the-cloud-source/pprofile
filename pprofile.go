@@ -1,0 +1,153 @@
+package pprofile
+
+import (
+	"expvar"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"os"
+)
+
+type server struct {
+	path     string
+	http     string
+	abstract string
+	mux      *http.ServeMux
+}
+
+var Server server
+
+func init() {
+	if v, ok := os.LookupEnv("PPROF_ENABLE_HTTP"); ok {
+		EnableHTTP = v
+	}
+	if v, ok := os.LookupEnv("PPROF_ENABLE_SOCKET"); ok {
+		EnableTmpSocket = v
+	}
+	if v, ok := os.LookupEnv("PPROF_ENABLE_ABSTRACT"); ok {
+		EnableAbstractSocket = v
+	}
+
+	if v, ok := os.LookupEnv("PPROF_HTTP_LISTEN"); ok {
+		ListenHTTP = v
+	}
+
+	if v, ok := os.LookupEnv("PPROF_SOCKET_LISTEN"); ok {
+		TmpSocketTemplate = v
+	}
+	if v, ok := os.LookupEnv("PPROF_ABSTRACT_LISTEN"); ok {
+		AbstractSocketTemplate = v
+	}
+
+	s := server{
+		mux: Mux(),
+	}
+
+	if EnableHTTP == "1" || EnableHTTP == "on" || EnableHTTP == "true" {
+		s.http = ListenHTTP
+	}
+
+	if EnableTmpSocket == "1" || EnableTmpSocket == "on" || EnableTmpSocket == "true" {
+		s.path = Expand(TmpSocketTemplate)
+	}
+
+	if EnableAbstractSocket == "1" || EnableAbstractSocket == "on" || EnableAbstractSocket == "true" {
+		s.abstract = Expand(AbstractSocketTemplate)
+	}
+
+	FailOnError = os.Getenv("PPROF_FAIL")
+	DebugLog = os.Getenv("PPROF_DEBUG")
+
+	Server = s
+	disable := os.Getenv("PPROF_OFF")
+	if disable == "1" || disable == "true" || disable == "TRUE" {
+		return
+	}
+
+	Server.ServeHTTP()
+	Server.ServeSocket()
+	Server.ServeAbstract()
+}
+
+func (s *server) ServeHTTP() {
+
+	if s.http == "" {
+		return
+	}
+
+	go http.ListenAndServe(s.http, s.mux)
+}
+
+func (s *server) ServeSocket() {
+
+	// Ensure existing socket is not listening.
+	conn, err := net.Dial("unix", s.path)
+	if err != nil {
+		os.Remove(s.path)
+	} else {
+		conn.Close()
+		return
+	}
+
+	// Serve the handlers.
+	l, err := net.Listen("unix", s.path)
+	if err != nil {
+		if dbglog() {
+			log.Printf("[ERROR] %v", err)
+		}
+		if fail() {
+			panic(err)
+		}
+		return
+	}
+	os.Chmod(s.path, 0666)
+	server := &http.Server{
+		Handler: s.mux,
+	}
+	go server.Serve(l)
+}
+
+func (s *server) ServeAbstract() {
+
+	if s.abstract == "" {
+		return
+	}
+
+	l, err := net.Listen("unix", s.abstract)
+	if err != nil {
+		if dbglog() {
+			log.Printf("[ERROR] %v", err)
+		}
+		if fail() {
+			panic(err)
+		}
+		return
+	}
+
+	server := &http.Server{
+		Handler: s.mux,
+	}
+
+	go server.Serve(l)
+}
+
+func expvarHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	fmt.Fprintf(w, "{\n")
+	first := true
+	expvar.Do(func(kv expvar.KeyValue) {
+		if !first {
+			fmt.Fprintf(w, ",\n")
+		}
+		first = false
+		fmt.Fprintf(w, "%q: %s", kv.Key, kv.Value)
+	})
+	fmt.Fprintf(w, "\n}\n")
+}
+
+func Cleanup() {
+	if Server.path != "" {
+		os.Remove(Server.path)
+	}
+}
