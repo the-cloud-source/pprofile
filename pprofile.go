@@ -76,10 +76,17 @@ func (s *server) ServeHTTP() {
 		return
 	}
 
+	if dbglog() {
+		log.Printf("DBG: %s", s.http)
+	}
 	go http.ListenAndServe(s.http, s.mux)
 }
 
 func (s *server) ServeSocket() {
+
+	if s.path == "" {
+		return
+	}
 
 	// Ensure existing socket is not listening.
 	conn, err := net.Dial("unix", s.path)
@@ -88,6 +95,10 @@ func (s *server) ServeSocket() {
 	} else {
 		conn.Close()
 		return
+	}
+
+	if dbglog() {
+		log.Printf("DBG: %s", s.path)
 	}
 
 	// Serve the handlers.
@@ -112,6 +123,10 @@ func (s *server) ServeAbstract() {
 
 	if s.abstract == "" {
 		return
+	}
+
+	if dbglog() {
+		log.Printf("DBG: %s", s.abstract)
 	}
 
 	l, err := net.Listen("unix", s.abstract)

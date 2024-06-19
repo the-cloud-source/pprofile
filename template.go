@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 )
 
@@ -30,6 +31,11 @@ func Expand(tmpl string) string {
 		}
 		return ""
 	}
+
+	exe = strings.TrimSuffix(exe, "-v1")
+	exe = strings.TrimSuffix(exe, "-v2")
+	exe = strings.TrimSuffix(exe, "-v3")
+	exe = strings.TrimSuffix(exe, "-v4")
 	data.Executable = filepath.Base(exe)
 
 	t := template.Must(template.New("template").Parse(tmpl))
