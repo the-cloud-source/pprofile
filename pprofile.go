@@ -179,3 +179,15 @@ func Cleanup() {
 		os.Remove(Server.path)
 	}
 }
+
+func Handler(r *http.Request) (h http.Handler, pattern string) {
+	return Server.mux.Handler(r)
+}
+
+func Handle(pattern string, handler http.Handler) {
+	Server.mux.Handle(pattern, handler)
+}
+
+func HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
+	Server.mux.HandleFunc(pattern, handler)
+}
