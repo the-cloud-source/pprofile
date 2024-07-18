@@ -14,21 +14,12 @@ type ppServerT struct {
 	http     string
 	abstract string
 	mux      *http.ServeMux
+	unixSrv  *http.Server
+	httpSrv  *http.Server
+	absSrv   *http.Server
 }
 
 var Server *ppServerT
-
-func Handler(r *http.Request) (h http.Handler, pattern string) {
-	return Server.mux.Handler(r)
-}
-
-func Handle(pattern string, handler http.Handler) {
-	Server.mux.Handle(pattern, handler)
-}
-
-func HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
-	Server.mux.HandleFunc(pattern, handler)
-}
 
 func init() {
 	if v, ok := os.LookupEnv("PPROF_ENABLE_HTTP"); ok {
@@ -91,7 +82,12 @@ func (s *ppServerT) ServeHTTP() {
 	if dbglog() {
 		log.Printf("DBG: %s", s.http)
 	}
-	go http.ListenAndServe(s.http, s.mux)
+
+	s.httpSrv = &http.Server{
+		Handler: s.mux,
+	}
+	go s.httpSrv.Serve(l)
+
 }
 
 func (s *ppServerT) ServeSocket() {
@@ -125,10 +121,10 @@ func (s *ppServerT) ServeSocket() {
 		return
 	}
 	os.Chmod(s.path, 0666)
-	server := &http.Server{
+	s.unixSrv = &http.Server{
 		Handler: s.mux,
 	}
-	go server.Serve(l)
+	go s.unixSrv.Serve(l)
 }
 
 func (s *ppServerT) ServeAbstract() {
@@ -152,11 +148,11 @@ func (s *ppServerT) ServeAbstract() {
 		return
 	}
 
-	server := &http.Server{
+	s.absSrv = &http.Server{
 		Handler: s.mux,
 	}
 
-	go server.Serve(l)
+	go s.absSrv.Serve(l)
 }
 
 func expvarHandler(w http.ResponseWriter, r *http.Request) {
