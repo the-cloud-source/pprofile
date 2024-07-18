@@ -11,3 +11,6 @@ var EnableAbstractSocket = "1"
 var ListenHTTP = "localhost:6000"
 var TmpSocketTemplate = "{{ .TMP }}" + string(os.PathSeparator) + ".{{ .Executable }}.{{ .PID }}"
 var AbstractSocketTemplate = "@{{ .Executable }}"
+
+var EnableOnInit = "1"
+var HTTP_NETWORK = "tcp4"

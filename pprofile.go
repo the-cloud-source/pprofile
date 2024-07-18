@@ -64,7 +64,7 @@ func init() {
 
 	Server = s
 	disable := os.Getenv("PPROF_OFF")
-	if disable == "1" || disable == "true" || disable == "TRUE" {
+	if disable == "1" || disable == "true" || disable == "TRUE" || EnableOnInit != "1" {
 		return
 	}
 
@@ -83,6 +83,11 @@ func (s *ppServerT) ServeHTTP() {
 		log.Printf("DBG: %s", s.http)
 	}
 
+	l, err := net.Listen(HTTP_NETWORK, s.http)
+	if err != nil {
+		// XXX - logging
+		return
+	}
 	s.httpSrv = &http.Server{
 		Handler: s.mux,
 	}
