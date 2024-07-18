@@ -9,14 +9,26 @@ import (
 	"os"
 )
 
-type server struct {
+type ppServerT struct {
 	path     string
 	http     string
 	abstract string
 	mux      *http.ServeMux
 }
 
-var Server server
+var Server ppServerT
+
+func Handler(r *http.Request) (h http.Handler, pattern string) {
+	return Server.mux.Handler(r)
+}
+
+func Handle(pattern string, handler http.Handler) {
+	Server.mux.Handle(pattern, handler)
+}
+
+func HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
+	Server.mux.HandleFunc(pattern, handler)
+}
 
 func init() {
 	if v, ok := os.LookupEnv("PPROF_ENABLE_HTTP"); ok {
@@ -40,7 +52,7 @@ func init() {
 		AbstractSocketTemplate = v
 	}
 
-	s := server{
+	s := ppServerT{
 		mux: Mux(),
 	}
 
@@ -70,7 +82,7 @@ func init() {
 	Server.ServeAbstract()
 }
 
-func (s *server) ServeHTTP() {
+func (s *ppServerT) ServeHTTP() {
 
 	if s.http == "" {
 		return
@@ -82,7 +94,7 @@ func (s *server) ServeHTTP() {
 	go http.ListenAndServe(s.http, s.mux)
 }
 
-func (s *server) ServeSocket() {
+func (s *ppServerT) ServeSocket() {
 
 	if s.path == "" {
 		return
@@ -119,7 +131,7 @@ func (s *server) ServeSocket() {
 	go server.Serve(l)
 }
 
-func (s *server) ServeAbstract() {
+func (s *ppServerT) ServeAbstract() {
 
 	if s.abstract == "" {
 		return
