@@ -52,7 +52,7 @@ func init() {
 		AbstractSocketTemplate = v
 	}
 
-	s := ppServerT{
+	s := &ppServerT{
 		mux: Mux(),
 	}
 
