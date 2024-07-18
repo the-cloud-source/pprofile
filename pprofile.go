@@ -75,6 +75,10 @@ func init() {
 
 func (s *ppServerT) ServeHTTP() {
 
+	if dbglog() {
+		log.Printf("DBG: http=[%s]", s.path)
+	}
+
 	if s.http == "" {
 		return
 	}
@@ -97,6 +101,9 @@ func (s *ppServerT) ServeHTTP() {
 
 func (s *ppServerT) ServeSocket() {
 
+	if dbglog() {
+		log.Printf("DBG: unix-socket=[%s]", s.path)
+	}
 	if s.path == "" {
 		return
 	}
@@ -133,6 +140,10 @@ func (s *ppServerT) ServeSocket() {
 }
 
 func (s *ppServerT) ServeAbstract() {
+
+	if dbglog() {
+		log.Printf("DBG: unix-abstract=[%s]", s.abstract)
+	}
 
 	if s.abstract == "" {
 		return
