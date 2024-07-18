@@ -16,7 +16,7 @@ type ppServerT struct {
 	mux      *http.ServeMux
 }
 
-var Server ppServerT
+var Server *ppServerT
 
 func Handler(r *http.Request) (h http.Handler, pattern string) {
 	return Server.mux.Handler(r)
