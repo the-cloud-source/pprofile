@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime/metrics"
 )
 
 type ppServerT struct {
@@ -169,6 +170,50 @@ func (s *ppServerT) ServeAbstract() {
 	}
 
 	go s.absSrv.Serve(l)
+}
+
+func metricsHandler(w http.ResponseWriter, r *http.Request) {
+	descs := metrics.All()
+	samples := make([]metrics.Sample, len(descs))
+	for i := range samples {
+		samples[i].Name = descs[i].Name
+	}
+	metrics.Read(samples)
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	raw := r.URL.Query().Has("raw")
+
+	fmt.Fprintf(w, "{\n")
+	first := ""
+	for _, sample := range samples {
+		name, value := sample.Name, sample.Value
+		// Handle each sample.
+		switch value.Kind() {
+		case metrics.KindUint64:
+			fmt.Fprintf(w, `%s"%s": %d`, first, name, value.Uint64())
+			first = ",\n"
+		case metrics.KindFloat64:
+			fmt.Fprintf(w, `%s"%s": %f`, first, name, value.Float64())
+			first = ",\n"
+		case metrics.KindFloat64Histogram:
+			if !raw {
+				continue
+			}
+			fmt.Fprintf(w, `%s"%s": `, first, name)
+			h := value.Float64Histogram()
+			fmt.Fprintf(w, `{`)
+			fst := ""
+			for i := range value.Float64Histogram().Counts {
+				fmt.Fprintf(w, `%s"%f": %d`, fst, h.Buckets[i], h.Counts[i])
+				fst = ","
+			}
+			fmt.Fprintf(w, `}`)
+		case metrics.KindBad:
+		default:
+		}
+	}
+	fmt.Fprintf(w, "\n}\n")
 }
 
 func expvarHandler(w http.ResponseWriter, r *http.Request) {

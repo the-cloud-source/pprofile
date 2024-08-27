@@ -20,6 +20,7 @@ func Mux() *http.ServeMux {
 
 	// Export debugging vars.
 	mux.Handle("/debug/vars", http.HandlerFunc(expvarHandler))
+	mux.Handle("/debug/metrics", http.HandlerFunc(metricsHandler))
 
 	return mux
 }
